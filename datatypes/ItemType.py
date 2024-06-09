@@ -32,15 +32,5 @@ class ItemType(Enum):
     def __str__(self):
         return self.name
 
-
-class Item:
-    def __init__(self, item_type: ItemType, quantity: int):
-        self.item_type = item_type
-        self.quantity = quantity
-
-    @property
-    def name(self):
-        return self.item_type
-
-    def __str__(self):
-        return f"{self.name}: {self.quantity}"
+    def __repr__(self):
+        return self.name

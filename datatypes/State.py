@@ -4,6 +4,7 @@ from typing import List
 from PySide6.QtGui import QColor
 
 from datatypes.Entity import Entity
+from datatypes.ItemType import ItemType
 
 
 class BulletType(Enum):
@@ -42,6 +43,15 @@ class State:
         self.max_health = max_health
         self.is_handcuffed = is_handcuffed
         self.is_sawed_off = is_sawed_off
+
+        # Set test state
+        self.player.current_health = 1
+        self.enemy.current_health = 2
+        self.max_health = 2
+        self.bullets = [BulletType.LIVE, BulletType.UNKNOWN]
+        self.n_live_bullets = 1
+        self.player.items = {ItemType.SAW: 1}
+        self.enemy.items = {}
 
     def __str__(self):
         bullet_names = [bullet.name for bullet in self.bullets]

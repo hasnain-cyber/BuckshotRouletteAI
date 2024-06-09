@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Union
+from typing import Union, Tuple
 
-from datatypes.Item import ItemType
+from datatypes.ItemType import ItemType
 
 
 class FireTargetType(Enum):
@@ -43,9 +43,16 @@ class ActionType(Enum):
 
 
 class Action:
-    def __init__(self, action_type: ActionType, target: Union[FireTargetType, ItemType]):
+    def __init__(self, action_type: ActionType,
+                 target: Union[FireTargetType, ItemType, Tuple[ItemType, ItemType]]):
         self.action_type = action_type
         self.target = target
 
     def __str__(self):
-        return f"{self.action_type}: {self.target}"
+        if isinstance(self.target, tuple):
+            return f"{self.action_type}: {self.target[0]}, {self.target[1]}"
+        else:
+            return f"{self.action_type}: {self.target}"
+
+    def __repr__(self):
+        return self.__str__()

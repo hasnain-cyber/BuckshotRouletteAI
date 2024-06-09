@@ -1,5 +1,5 @@
 from datatypes.Action import ActionType, Action, FireTargetType
-from datatypes.Item import ItemType
+from datatypes.ItemType import ItemType
 from datatypes.State import State, BulletType
 
 
@@ -21,6 +21,100 @@ def get_live_bullet_prob(state: State) -> float:
     undiscovered_blank_bullets = get_undiscovered_blank_bullets(state)
 
     return undiscovered_live_bullets / (undiscovered_live_bullets + undiscovered_blank_bullets)
+
+
+def get_success_prob_using_item(state: State, item_to_use: ItemType, use_enemy_item: bool) -> float:
+    success_prob: float = 0
+
+    # Use own item
+    if not use_enemy_item:
+        state.player.items[item_to_use] -= 1
+    else:
+        state.enemy.items[item_to_use] -= 1
+
+    if item_to_use == ItemType.MAGNIFYING_GLASS:
+        # Assume bullet revealed is live
+        state.bullets[0] = BulletType.LIVE
+        success_prob += get_success_prob(state)[0]
+        state.bullets[0] = BulletType.UNKNOWN
+
+        # Assume bullet revealed is blank
+        state.bullets[0] = BulletType.BLANK
+        success_prob += get_success_prob(state)[0]
+        state.bullets[0] = BulletType.UNKNOWN
+
+    elif item_to_use == ItemType.CIGARETTES:
+        # Use item if health is less than max
+        state.player.current_health += 1
+        success_prob += get_success_prob(state)[0]
+        state.player.current_health -= 1
+
+    elif item_to_use == ItemType.BEER:
+        # Assume live bullet ejected
+        if state.n_live_bullets > 0:
+            state.n_live_bullets -= 1
+            temp_bullet = state.bullets.pop(0)
+            success_prob += get_success_prob(state)[0]
+            state.n_live_bullets += 1
+            state.bullets.insert(0, temp_bullet)
+
+        # Assume blank bullet ejected
+        if state.n_live_bullets < len(state.bullets):
+            temp_bullet = state.bullets.pop(0)
+            success_prob += get_success_prob(state)[0]
+            state.bullets.insert(0, temp_bullet)
+
+    elif item_to_use == ItemType.HANDCUFFS:
+        # Handcuff the enemy
+        state.is_handcuffed = True
+        success_prob += get_success_prob(state)[0]
+        state.is_handcuffed = False
+
+    elif item_to_use == ItemType.SAW:
+        # Saw off the shotgun
+        state.is_sawed_off = True
+        success_prob += get_success_prob(state)[0]
+        state.is_sawed_off = False
+
+    elif item_to_use == ItemType.BURNER_PHONE:
+        # TODO: Write logic for burner phone
+        pass
+
+    elif item_to_use == ItemType.EXPIRED_MEDICINE:
+        # Half probability of healing 2 health
+        temp_player_health = state.player.current_health
+        state.player.current_health = min(state.player.current_health + 2, state.max_health)
+        success_prob += 0.5 * get_success_prob(state)[0]
+        state.player.current_health = temp_player_health
+
+        # Half probability of losing 1 health
+        state.player.current_health -= 1
+        success_prob += 0.5 * get_success_prob(state)[0]
+        state.player.current_health += 1
+
+    elif item_to_use == ItemType.INVERTER:
+        # Assume live bullet inverted
+        if state.n_live_bullets > 0:
+            state.n_live_bullets -= 1
+            temp_bullet = state.bullets[0]
+            state.bullets[0] = BulletType.BLANK
+            success_prob += get_success_prob(state)[0]
+            state.n_live_bullets += 1
+            state.bullets[0] = temp_bullet
+
+        # Assume blank bullet inverted
+        if state.n_live_bullets < len(state.bullets):
+            temp_bullet = state.bullets[0]
+            state.bullets[0] = BulletType.LIVE
+            success_prob += get_success_prob(state)[0]
+            state.bullets[0] = temp_bullet
+
+    if not use_enemy_item:
+        state.player.items[item_to_use] += 1
+    else:
+        state.enemy.items[item_to_use] += 1
+
+    return success_prob
 
 
 def get_success_prob(state: State) -> (float, Action):
@@ -69,7 +163,6 @@ def get_success_prob(state: State) -> (float, Action):
         temp_prob += (1 - live_prob) * get_success_prob(state)[0]
         state.bullets.insert(0, temp_bullet)
 
-
     success_probs.append((temp_prob, Action(ActionType.FIRE, FireTargetType.PLAYER)))
 
     # Fire on enemy
@@ -114,100 +207,37 @@ def get_success_prob(state: State) -> (float, Action):
     state.is_sawed_off = was_sawed_off
 
     # Try using an item
-    for item in state.player.items:
-        # Use item on self
-        temp_prob = 0
-        if item.quantity > 0:
-            item.quantity -= 1
+    for item_type in state.player.items:
+        if state.player.items[item_type] == 0:
+            continue
 
-            if (item.item_type == ItemType.MAGNIFYING_GLASS) and (state.bullets[0] == BulletType.UNKNOWN):
-                # Assume bullet revealed is live
-                state.bullets[0] = BulletType.LIVE
-                temp_prob += live_prob * get_success_prob(state)[0]
-                state.bullets[0] = BulletType.UNKNOWN
+        # Use the function to get the success probability of using the item, except for adrenaline
+        if not (item_type == ItemType.ADRENALINE):
+            temp_prob = get_success_prob_using_item(state, item_type, False)
+            success_probs.append((temp_prob, Action(ActionType.USE_ITEM, item_type)))
+        else:
+            state.player.items[item_type] -= 1
 
-                # Assume bullet revealed is blank
-                state.bullets[0] = BulletType.BLANK
-                temp_prob += (1 - live_prob) * get_success_prob(state)[0]
-                state.bullets[0] = BulletType.UNKNOWN
+            # Use adrenaline
+            adrenaline_success_probs: (float, ItemType) = []
+            for enemy_item_type in state.enemy.items:
+                if state.enemy.items[enemy_item_type] == 0:
+                    continue
 
-            elif (item.item_type == ItemType.CIGARETTES) and (state.player.current_health < state.max_health):
-                # Use item if health is less than max
-                state.player.current_health += 1
-                temp_prob += get_success_prob(state)[0]
-                state.player.current_health -= 1
+                if enemy_item_type == ItemType.ADRENALINE:
+                    continue
 
-            elif item.item_type == ItemType.BEER:
-                # Assume live bullet ejected
-                if state.n_live_bullets > 0:
-                    state.n_live_bullets -= 1
-                    temp_bullet = state.bullets.pop(0)
-                    temp_prob += live_prob * get_success_prob(state)[0]
-                    state.n_live_bullets += 1
-                    state.bullets.insert(0, temp_bullet)
+                adrenaline_success_probs.append(
+                    (get_success_prob_using_item(state, enemy_item_type, True), enemy_item_type))
 
-                # Assume blank bullet ejected
-                if state.n_live_bullets < len(state.bullets):
-                    temp_bullet = state.bullets.pop(0)
-                    temp_prob += (1 - live_prob) * get_success_prob(state)[0]
-                    state.bullets.insert(0, temp_bullet)
+            state.player.items[item_type] += 1
 
-            elif (item.item_type == ItemType.HANDCUFFS) and (not state.is_handcuffed):
-                # Handcuff the enemy
-                state.is_handcuffed = True
-                temp_prob += get_success_prob(state)[0]
-                state.is_handcuffed = False
+            # Add the  item used with adrenaline, that gives the highest success prob
+            if len(adrenaline_success_probs) > 0:
+                temp_prob, enemy_item_type = max(adrenaline_success_probs, key=lambda x: x[0])
+                success_probs.append((temp_prob, Action(ActionType.USE_ITEM, (item_type, enemy_item_type))))
 
-            elif (item.item_type == ItemType.SAW) and (not state.is_sawed_off):
-                # Saw off the shotgun
-                state.is_sawed_off = True
-                temp_prob += get_success_prob(state)[0]
-                state.is_sawed_off = False
-
-            elif item.item_type == ItemType.BURNER_PHONE:
-                # TODO: Write logic for burner phone
-                pass
-
-            elif (item.item_type == ItemType.EXPIRED_MEDICINE) and (state.player.current_health < state.max_health):
-                # Half probability of healing 2 health
-                temp_player_health = state.player.current_health
-                state.player.current_health = min(state.player.current_health + 2, state.max_health)
-                temp_prob += 0.5 * get_success_prob(state)[0]
-                state.player.current_health = temp_player_health
-
-                # Half probability of losing 1 health
-                state.player.current_health -= 1
-                temp_prob += 0.5 * get_success_prob(state)[0]
-                state.player.current_health += 1
-
-            elif item.item_type == ItemType.ADRENALINE:
-                # TODO: Write logic for adrenaline
-                pass
-
-            elif item.item_type == ItemType.INVERTER:
-                # Assume live bullet inverted
-                if state.n_live_bullets > 0:
-                    state.n_live_bullets -= 1
-                    temp_bullet = state.bullets[0]
-                    state.bullets[0] = BulletType.BLANK
-                    temp_prob += live_prob * get_success_prob(state)[0]
-                    state.n_live_bullets += 1
-                    state.bullets[0] = temp_bullet
-
-                # Assume blank bullet inverted
-                if state.n_live_bullets < len(state.bullets):
-                    temp_bullet = state.bullets[0]
-                    state.bullets[0] = BulletType.LIVE
-                    temp_prob += (1 - live_prob) * get_success_prob(state)[0]
-                    state.bullets[0] = temp_bullet
-
-            item.quantity += 1
-
-        success_probs.append((temp_prob, Action(ActionType.USE_ITEM, item)))
+        success_probs.append((temp_prob, Action(ActionType.USE_ITEM, item_type)))
 
     # Return the action with the highest success probability
     return max(success_probs, key=lambda x: x[0])
-
-
-class MarkovChain:
-    pass

@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QSplitter, QWidget, QVBoxLayout, \
     QFormLayout, QLineEdit, QLabel, QCheckBox, QHBoxLayout, QPushButton
 
-from datatypes.Item import ItemType
+from datatypes.ItemType import ItemType
 from datatypes.State import State, BulletType
 from utils.Constants import WINDOW_WIDTH, WINDOW_HEIGHT
 from utils.ProbabilityEngine import get_success_prob
@@ -102,17 +102,13 @@ class MainWindow(QMainWindow):
         # Add label and input field for each player item and its quantity
         self.player_items_inputs = {}
         for item_type in ItemType:
-            item_name = item_type.name
-            item_quantity = self.state.player.items.get(item_name, 0)
+            item_quantity = self.state.player.items.get(item_type, 0)
             item_input = QLineEdit(str(item_quantity))
             item_input.editingFinished.connect(
-                lambda item_name_to_update=item_name, item_input_to_update=item_input:
-                self.update_state(
-                    f"player"
-                    f"_{item_name_to_update}",
-                    item_input_to_update.text()))
-            self.player_items_inputs[item_name] = item_input
-            left_form.addRow(QLabel(item_name), item_input)
+                lambda item_type_to_update=item_type, item_input_to_update=item_input: self.update_state(
+                    f"player_{item_type_to_update}", item_input_to_update.text()))
+            self.player_items_inputs[item_type] = item_input
+            left_form.addRow(QLabel(item_type.name), item_input)
 
         left_layout.addLayout(left_form)
         left_widget.setLayout(left_layout)
@@ -132,17 +128,13 @@ class MainWindow(QMainWindow):
         # Add label and input field for each enemy item and its quantity
         self.enemy_items_inputs = {}
         for item_type in ItemType:
-            item_name = item_type.name
-            item_quantity = self.state.enemy.items.get(item_name, 0)
+            item_quantity = self.state.enemy.items.get(item_type, 0)
             item_input = QLineEdit(str(item_quantity))
             item_input.editingFinished.connect(
-                lambda item_name_to_update=item_name, item_input_to_update=item_input:
-                self.update_state(
-                    f"enemy"
-                    f"_{item_name_to_update}",
-                    item_input_to_update.text()))
-            self.enemy_items_inputs[item_name] = item_input
-            right_form.addRow(QLabel(item_name), item_input)
+                lambda item_type_to_update=item_type, item_input_to_update=item_input: self.update_state(
+                    f"enemy_{item_type_to_update}", item_input_to_update.text()))
+            self.enemy_items_inputs[item_type] = item_input
+            right_form.addRow(QLabel(item_type.name), item_input)
 
         right_layout.addLayout(right_form)
         right_widget.setLayout(right_layout)
@@ -168,6 +160,8 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
+
+        self.update_ui()
 
     def update_ui(self):
         # Update max_health
@@ -209,18 +203,16 @@ class MainWindow(QMainWindow):
 
         # Update player items
         for item_type in ItemType:
-            item_name = item_type.name
-            item_quantity = self.state.player.items.get(item_name, 0)
-            self.player_items_inputs[item_name].setText(str(item_quantity))
+            item_quantity = self.state.player.items.get(item_type, 0)
+            self.player_items_inputs[item_type].setText(str(item_quantity))
 
         # Update enemy_health
         self.enemy_health_input.setText(str(self.state.enemy.current_health))
 
         # Update enemy items
         for item_type in ItemType:
-            item_name = item_type.name
-            item_quantity = self.state.enemy.items.get(item_name, 0)
-            self.enemy_items_inputs[item_name].setText(str(item_quantity))
+            item_quantity = self.state.enemy.items.get(item_type, 0)
+            self.enemy_items_inputs[item_type].setText(str(item_quantity))
 
     def update_state(self, field_name, new_value):
         if not new_value:
@@ -241,11 +233,10 @@ class MainWindow(QMainWindow):
             self.state.enemy.current_health = int(new_value)
         else:
             for item_type in ItemType:
-                item_name = item_type.name
-                if field_name == f"player_{item_name}":
-                    self.state.player.items[item_name] = int(new_value)
-                elif field_name == f"enemy_{item_name}":
-                    self.state.enemy.items[item_name] = int(new_value)
+                if field_name == f"player_{item_type}":
+                    self.state.player.items[item_type] = int(new_value)
+                elif field_name == f"enemy_{item_type}":
+                    self.state.enemy.items[item_type] = int(new_value)
 
         print(self.state)
 
