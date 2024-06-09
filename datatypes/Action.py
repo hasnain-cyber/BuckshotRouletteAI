@@ -48,4 +48,4 @@ class Action:
         self.target = target
 
     def __str__(self):
-        return f"{self.action_type} {self.target}"
+        return f"{self.action_type}: {self.target}"

@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QMainWindow, QSplitter, QWidget, QVBoxLayout, \
 from datatypes.Item import ItemType
 from datatypes.State import State, BulletType
 from utils.Constants import WINDOW_WIDTH, WINDOW_HEIGHT
-from utils.MarkovChain import get_success_prob
+from utils.ProbabilityEngine import get_success_prob
 
 
 class MainWindow(QMainWindow):
@@ -157,9 +157,7 @@ class MainWindow(QMainWindow):
         # Create a button for evaluating the action
         self.evaluate_button = QPushButton("Evaluate")
         self.evaluate_button.clicked.connect(
-            lambda state_to_evaluate=self.state: self.action_label.setText(str(
-                get_success_prob(state_to_evaluate)[1]))
-        )
+            lambda: self.action_label.setText(str(get_success_prob(self.state)[1])))
         main_layout.addWidget(self.evaluate_button)
 
         # Create a label for displaying the action
@@ -198,8 +196,7 @@ class MainWindow(QMainWindow):
             bullet_widget.setStyleSheet(f"background-color: {bullet_color};")
 
             # Add a mouse click event listener to the bullet widget
-            bullet_widget.mousePressEvent = lambda event, index=i: self.cycle_bullet_type(
-                index)
+            bullet_widget.mousePressEvent = lambda event, index=i: self.cycle_bullet_type(index)
 
             # Add the bullet widget to the layout
             self.bullets_layout.addWidget(bullet_widget)
@@ -227,8 +224,7 @@ class MainWindow(QMainWindow):
 
     def update_state(self, field_name, new_value):
         if not new_value:
-            new_value = ("0" if field_name != "is_handcuffed" and field_name !=
-                                "is_sawed_off" else "false")
+            new_value = ("0" if field_name != "is_handcuffed" and field_name != "is_sawed_off" else "false")
 
         # Update the state based on the field name and new value
         if field_name == "max_health":
