@@ -45,12 +45,12 @@ class State:
         self.is_sawed_off = is_sawed_off
 
         # Set test state
-        self.player.current_health = 1
+        self.player.current_health = 2
         self.enemy.current_health = 2
-        self.max_health = 2
-        self.bullets = [BulletType.LIVE, BulletType.UNKNOWN]
-        self.n_live_bullets = 1
-        self.player.items = {ItemType.SAW: 1}
+        self.max_health = 3
+        self.bullets = [BulletType.LIVE, BulletType.LIVE]
+        self.n_live_bullets = 2
+        self.player.items = {ItemType.CIGARETTES: 1}
         self.enemy.items = {}
 
     def __str__(self):

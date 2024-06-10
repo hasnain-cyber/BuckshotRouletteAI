@@ -126,7 +126,7 @@ def get_success_prob(state: State) -> (float, Action):
     # If there are no bullets, then the next round will start, and this round will be
     # considered as a success, to not affect the preceding state's probability
     if len(state.bullets) == 0:
-        return state.player.current_health / state.max_health, None
+        return state.player.current_health / (state.player.current_health + state.enemy.current_health), None
 
     # List to store the success probabilities of each action
     success_probs: (float, Action) = []
@@ -144,7 +144,7 @@ def get_success_prob(state: State) -> (float, Action):
     # Assume live bullet
     temp_prob = 0
     if state.n_live_bullets > 0:
-        state.player.current_health -= (1 + state.is_sawed_off)
+        state.player.current_health -= (1 + was_sawed_off)
         state.n_live_bullets -= 1
         temp_bullet = state.bullets.pop(0)
 
@@ -152,7 +152,7 @@ def get_success_prob(state: State) -> (float, Action):
         temp_prob += live_prob * (1 - get_success_prob(state)[0])
         state.player, state.enemy = state.enemy, state.player
 
-        state.player.current_health += (1 + state.is_sawed_off)
+        state.player.current_health += (1 + was_sawed_off)
         state.n_live_bullets += 1
         state.bullets.insert(0, temp_bullet)
 
@@ -169,7 +169,7 @@ def get_success_prob(state: State) -> (float, Action):
     # Assume live bullet
     temp_prob = 0
     if state.n_live_bullets > 0:
-        state.enemy.current_health -= (1 + state.is_sawed_off)
+        state.enemy.current_health -= (1 + was_sawed_off)
         state.n_live_bullets -= 1
         temp_bullet = state.bullets.pop(0)
 
@@ -183,7 +183,7 @@ def get_success_prob(state: State) -> (float, Action):
             temp_prob += live_prob * get_success_prob(state)[0]
             state.is_handcuffed = True
 
-        state.enemy.current_health += (1 + state.is_sawed_off)
+        state.enemy.current_health += (1 + was_sawed_off)
         state.n_live_bullets += 1
         state.bullets.insert(0, temp_bullet)
 
@@ -216,6 +216,7 @@ def get_success_prob(state: State) -> (float, Action):
             temp_prob = get_success_prob_using_item(state, item_type, False)
             success_probs.append((temp_prob, Action(ActionType.USE_ITEM, item_type)))
         else:
+            # Remove one adrenaline from player's inventory
             state.player.items[item_type] -= 1
 
             # Use adrenaline
@@ -237,7 +238,6 @@ def get_success_prob(state: State) -> (float, Action):
                 temp_prob, enemy_item_type = max(adrenaline_success_probs, key=lambda x: x[0])
                 success_probs.append((temp_prob, Action(ActionType.USE_ITEM, (item_type, enemy_item_type))))
 
-        success_probs.append((temp_prob, Action(ActionType.USE_ITEM, item_type)))
-
     # Return the action with the highest success probability
+    print(success_probs)
     return max(success_probs, key=lambda x: x[0])
